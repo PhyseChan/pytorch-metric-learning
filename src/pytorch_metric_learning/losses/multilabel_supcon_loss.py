@@ -10,13 +10,15 @@ from .generic_pair_loss import GenericPairLoss
 
 # adapted from https://github.com/HobbitLong/SupContrast
 class MultiSupConLoss(GenericPairLoss):
-    def __init__(self, num_classes,  temperature=0.1, **kwargs):
+    def __init__(self, num_classes,  temperature=0.1, threshold=0.3, **kwargs):
         super().__init__(mat_based_loss=True, **kwargs)
         self.temperature = temperature
         self.add_to_recordable_attributes(list_of_names=["temperature"], is_stat=False)
         self.num_classes = num_classes
+        self.threshold = threshold
 
     def _compute_loss(self, mat, pos_mask, neg_mask):
+        print(pos_mask)
         if pos_mask.bool().any() and neg_mask.bool().any():
             # if dealing with actual distances, use negative distances
             if not self.distance.is_inverted:
@@ -24,7 +26,6 @@ class MultiSupConLoss(GenericPairLoss):
             mat = mat / self.temperature
             mat_max, _ = mat.max(dim=1, keepdim=True)
             mat = mat - mat_max.detach()  # for numerical stability
-
             denominator = lmu.logsumexp(
                 mat, keep_mask=(pos_mask + neg_mask).bool(), add_one=False, dim=1
             )
@@ -57,7 +58,13 @@ class MultiSupConLoss(GenericPairLoss):
     
     def compute_loss(self, embeddings, labels, indices_tuple, ref_emb, ref_labels):
         c_f.labels_or_indices_tuple_required(labels, indices_tuple)
-        indices_tuple = mlmu.convert_to_pairs(indices_tuple, labels, self.num_classes, ref_labels, device=embeddings.device)
+        indices_tuple = mlmu.convert_to_pairs(
+            indices_tuple, 
+            labels, 
+            self.num_classes, 
+            ref_labels, 
+            device=embeddings.device, 
+            threshold=self.threshold)
         if all(len(x) <= 1 for x in indices_tuple):
             return self.zero_losses()
         mat = self.distance(embeddings, ref_emb)

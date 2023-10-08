@@ -16,7 +16,7 @@ def set_ref_emb(embeddings, labels, ref_emb, ref_labels):
     check_shapes_multilabels(ref_emb, ref_labels)
     return ref_emb, ref_labels
 
-def convert_to_pairs(indices_tuple, labels, num_classes, ref_labels=None, device=None):
+def convert_to_pairs(indices_tuple, labels, num_classes, ref_labels=None, device=None, threshold=0.3):
     """
     This returns anchor-positive and anchor-negative indices,
     regardless of what the input indices_tuple is
@@ -26,28 +26,28 @@ def convert_to_pairs(indices_tuple, labels, num_classes, ref_labels=None, device
         labels: a tensor which has the label for each element in a batch
     """
     if indices_tuple is None:
-        return get_all_pairs_indices(labels, num_classes, ref_labels, device=device)
+        return get_all_pairs_indices(labels, num_classes, ref_labels, device=device, threshold=threshold)
     elif len(indices_tuple) == 4:
         return indices_tuple
     else:
         a, p, n = indices_tuple
         return a, p, a, n
     
-def get_matches_and_diffs(labels, num_classes, ref_labels=None, device=None):
-    matches = jaccard(num_classes, labels, ref_labels, device=device)
+def get_matches_and_diffs(labels, num_classes, ref_labels=None, device=None, threshold=0.3):
+    matches = jaccard(num_classes, labels, ref_labels, device=device, threshold=threshold)
     diffs = matches ^ 1
     if ref_labels is labels:
         matches.fill_diagonal_(0)
     return matches, diffs
 
 
-def get_all_pairs_indices(labels, num_classes, ref_labels=None, device=None):
+def get_all_pairs_indices(labels, num_classes, ref_labels=None, device=None, threshold=0.3):
     """
     Given a tensor of labels, this will return 4 tensors.
     The first 2 tensors are the indices which form all positive pairs
     The second 2 tensors are the indices which form all negative pairs
     """
-    matches, diffs = get_matches_and_diffs(labels, num_classes, ref_labels, device)
+    matches, diffs = get_matches_and_diffs(labels, num_classes, ref_labels, device, threshold=threshold)
     a1_idx, p_idx = torch.where(matches)
     a2_idx, n_idx = torch.where(diffs)
     return a1_idx, p_idx, a2_idx, n_idx
@@ -55,12 +55,9 @@ def get_all_pairs_indices(labels, num_classes, ref_labels=None, device=None):
 def jaccard(n_classes, labels, ref_labels=None, threshold=0.3, device=torch.device("cpu")):
     if ref_labels is None:
         ref_labels = labels
-    # convert multilabels to scatter labels
-    labels1 = [torch.nn.functional.one_hot(torch.Tensor(label).long(), n_classes).sum(0) for label in labels]
-    labels2 = [torch.nn.functional.one_hot(torch.Tensor(label).long(), n_classes).sum(0) for label in ref_labels]
-    # stack and convert to float for calculation convenience
-    labels1 = torch.stack(labels1).float()
-    labels2 = torch.stack(labels2).float()
+        
+    labels1 = labels.float()
+    labels2 = ref_labels.float()
 
     # compute jaccard similarity
     # jaccard = intersection / union 
