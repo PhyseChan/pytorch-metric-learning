@@ -103,7 +103,7 @@ def remove_self_comparisons(
     # remove self-comparisons
     assert len(indices_tuple) in [4, 5]
     s, e = curr_batch_idx[0], curr_batch_idx[-1]
-    if len(indices_tuple) == 3:
+    if len(indices_tuple) == 4:
         a, p, n = indices_tuple
         keep_mask = lmu.not_self_comparisons(
             a, p, s, e, curr_batch_idx, ref_size, ref_is_subset
@@ -113,7 +113,7 @@ def remove_self_comparisons(
         n = n[keep_mask]
         assert len(a) == len(p) == len(n)
         return a, p, n
-    elif len(indices_tuple) == 4:
+    elif len(indices_tuple) == 5:
         a1, p, a2, n = indices_tuple
         keep_mask = lmu.not_self_comparisons(
             a1, p, s, e, curr_batch_idx, ref_size, ref_is_subset
