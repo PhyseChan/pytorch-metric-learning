@@ -32,7 +32,7 @@ class MultiSupConLoss(GenericPairLoss):
                 mat, keep_mask=(pos_mask + neg_mask).bool(), add_one=False, dim=1
             )
             log_prob = mat - denominator
-            mean_log_prob_pos = (multi_val * log_prob).sum(dim=1) / (
+            mean_log_prob_pos = (multi_val * log_prob * pos_mask).sum(dim=1) / (
                 pos_mask.sum(dim=1) + c_f.small_val(mat.dtype)
             )
             return {
@@ -68,7 +68,7 @@ class MultiSupConLoss(GenericPairLoss):
             threshold=self.threshold)
         if all(len(x) <= 1 for x in indices_tuple):
             return self.zero_losses()
-        mat = self.dot_cosine_sim(embeddings, ref_emb)
+        mat = self.distance(embeddings, ref_emb)
         return self.loss_method(mat, indices_tuple)
 
     def forward(
@@ -90,5 +90,6 @@ class MultiSupConLoss(GenericPairLoss):
             embeddings, labels, indices_tuple, ref_emb, ref_labels
         )
         self.add_embedding_regularization_to_loss_dict(loss_dict, embeddings)
+        print(loss_dict)
         return self.reducer(loss_dict, embeddings, labels)
     
