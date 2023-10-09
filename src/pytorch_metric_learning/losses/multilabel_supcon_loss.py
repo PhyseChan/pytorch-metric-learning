@@ -32,7 +32,6 @@ class MultiSupConLoss(GenericPairLoss):
                 mat, keep_mask=(pos_mask + neg_mask).bool(), add_one=False, dim=1
             )
             log_prob = mat - denominator
-            print(multi_val * log_prob,'\n', multi_val)
             mean_log_prob_pos = (multi_val * log_prob).sum(dim=1) / (
                 pos_mask.sum(dim=1) + c_f.small_val(mat.dtype)
             )
