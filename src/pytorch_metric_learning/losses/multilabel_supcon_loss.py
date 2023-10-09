@@ -90,6 +90,5 @@ class MultiSupConLoss(GenericPairLoss):
             embeddings, labels, indices_tuple, ref_emb, ref_labels
         )
         self.add_embedding_regularization_to_loss_dict(loss_dict, embeddings)
-        print(loss_dict)
         return self.reducer(loss_dict, embeddings, labels)
     
