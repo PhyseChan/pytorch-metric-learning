@@ -96,3 +96,31 @@ def get_all_triplets_indices(labels, ref_labels=None):
     triplets = matches.unsqueeze(2) * diffs.unsqueeze(1)
     return torch.where(triplets)
 
+
+def remove_self_comparisons(
+    indices_tuple, curr_batch_idx, ref_size, ref_is_subset=False
+):
+    # remove self-comparisons
+    assert len(indices_tuple) in [4, 5]
+    s, e = curr_batch_idx[0], curr_batch_idx[-1]
+    if len(indices_tuple) == 3:
+        a, p, n = indices_tuple
+        keep_mask = lmu.not_self_comparisons(
+            a, p, s, e, curr_batch_idx, ref_size, ref_is_subset
+        )
+        a = a[keep_mask]
+        p = p[keep_mask]
+        n = n[keep_mask]
+        assert len(a) == len(p) == len(n)
+        return a, p, n
+    elif len(indices_tuple) == 4:
+        a1, p, a2, n = indices_tuple
+        keep_mask = lmu.not_self_comparisons(
+            a1, p, s, e, curr_batch_idx, ref_size, ref_is_subset
+        )
+        a1 = a1[keep_mask]
+        p = p[keep_mask]
+        assert len(a1) == len(p)
+        assert len(a2) == len(n)
+        return a1, p, a2, n
+

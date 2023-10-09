@@ -107,7 +107,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
         else:
             indices_tuple = mlmu.get_all_pairs_indices(labels, self.num_classes, L_mem)
         if do_remove_self_comparisons:
-            indices_tuple = lmu.remove_self_comparisons(
+            indices_tuple = mlmu.remove_self_comparisons(
                 indices_tuple, self.curr_batch_idx, self.memory_size
             )
 
