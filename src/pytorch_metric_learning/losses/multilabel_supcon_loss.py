@@ -10,15 +10,17 @@ from .generic_pair_loss import GenericPairLoss
 
 # adapted from https://github.com/HobbitLong/SupContrast
 class MultiSupConLoss(GenericPairLoss):
-    def __init__(self, num_classes,  temperature=0.1, threshold=0.3, **kwargs):
+    def __init__(self, num_classes,  temperature=0.07, threshold=0.3, **kwargs):
         super().__init__(mat_based_loss=True, **kwargs)
         self.temperature = temperature
         self.add_to_recordable_attributes(list_of_names=["temperature"], is_stat=False)
         self.num_classes = num_classes
         self.threshold = threshold
 
-    def _compute_loss(self, mat, pos_mask, neg_mask):
-        print(pos_mask)
+    def dot_cosine_sim(self, a, b):
+        return a@b.T
+
+    def _compute_loss(self, mat, pos_mask, neg_mask, multi_val):
         if pos_mask.bool().any() and neg_mask.bool().any():
             # if dealing with actual distances, use negative distances
             if not self.distance.is_inverted:
@@ -30,10 +32,10 @@ class MultiSupConLoss(GenericPairLoss):
                 mat, keep_mask=(pos_mask + neg_mask).bool(), add_one=False, dim=1
             )
             log_prob = mat - denominator
-            mean_log_prob_pos = (pos_mask * log_prob).sum(dim=1) / (
+            print(multi_val * log_prob,'\n', multi_val)
+            mean_log_prob_pos = (multi_val * log_prob).sum(dim=1) / (
                 pos_mask.sum(dim=1) + c_f.small_val(mat.dtype)
             )
-
             return {
                 "loss": {
                     "losses": -mean_log_prob_pos,
@@ -50,11 +52,11 @@ class MultiSupConLoss(GenericPairLoss):
         return CosineSimilarity()
 
     def mat_based_loss(self, mat, indices_tuple):
-        a1, p, a2, n = indices_tuple
+        a1, p, a2, n, jaccard_mat = indices_tuple
         pos_mask, neg_mask = torch.zeros_like(mat), torch.zeros_like(mat)
         pos_mask[a1, p] = 1
         neg_mask[a2, n] = 1
-        return self._compute_loss(mat, pos_mask, neg_mask)
+        return self._compute_loss(mat, pos_mask, neg_mask, jaccard_mat)
     
     def compute_loss(self, embeddings, labels, indices_tuple, ref_emb, ref_labels):
         c_f.labels_or_indices_tuple_required(labels, indices_tuple)
@@ -67,7 +69,7 @@ class MultiSupConLoss(GenericPairLoss):
             threshold=self.threshold)
         if all(len(x) <= 1 for x in indices_tuple):
             return self.zero_losses()
-        mat = self.distance(embeddings, ref_emb)
+        mat = self.dot_cosine_sim(embeddings, ref_emb)
         return self.loss_method(mat, indices_tuple)
 
     def forward(

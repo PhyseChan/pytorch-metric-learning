@@ -40,12 +40,22 @@ class TestMultiSupConLoss(unittest.TestCase):
         # self.assertTrue(loss == 0)
 
         # test scatter labels
-        for device in [torch.device("cpu"),torch.device("cuda")]:
-            embeddings = torch.randn(n_samples, n_dim, device=device)
-            labels = [random.sample(range(n_cls), np.random.randint(1, 4)) for i in range(n_samples)]
-            labels = torch.stack([
-                torch.nn.functional.one_hot(torch.tensor(label), n_cls).sum(dim=0).float()
-                for label in labels
-            ], dim=0)
-            loss = loss_func(embeddings, labels)
-            self.assertTrue(loss >= 0)
+        # for device in [torch.device("cpu"),torch.device("cuda")]:
+        #     embeddings = torch.randn(n_samples, n_dim, device=device)
+        #     labels = [random.sample(range(n_cls), np.random.randint(1, 4)) for i in range(n_samples)]
+        #     labels = torch.stack([
+        #         torch.nn.functional.one_hot(torch.tensor(label), n_cls).sum(dim=0).float()
+        #         for label in labels
+        #     ], dim=0)
+        #     loss = loss_func(embeddings, labels)
+        #     self.assertTrue(loss >= 0)
+
+        # test val
+        embeddings = torch.tensor([[0.1, 0.3, 0.1],
+                                    [0.2, 0.2, -0.1],
+                                    [0.1, -0.06, 0.1],
+                                    [0.03, -0.13, 0.4]])
+        labels = torch.tensor([[1,0,1], [1,0,0], [0,0,1], [0,1,1]])
+        loss = loss_func(embeddings, labels)
+        print(loss)
+        self.assertTrue(loss ==0)

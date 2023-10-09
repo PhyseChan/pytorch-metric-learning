@@ -34,11 +34,12 @@ def convert_to_pairs(indices_tuple, labels, num_classes, ref_labels=None, device
         return a, p, a, n
     
 def get_matches_and_diffs(labels, num_classes, ref_labels=None, device=None, threshold=0.3):
-    matches = jaccard(num_classes, labels, ref_labels, device=device, threshold=threshold)
+    jaccard_matrix = jaccard(num_classes, labels, ref_labels, device=device, threshold=threshold)
+    matches = torch.where(jaccard_matrix > threshold, 1, 0).to(device)
     diffs = matches ^ 1
     if ref_labels is labels:
         matches.fill_diagonal_(0)
-    return matches, diffs
+    return matches, diffs, jaccard_matrix
 
 
 def get_all_pairs_indices(labels, num_classes, ref_labels=None, device=None, threshold=0.3):
@@ -47,10 +48,10 @@ def get_all_pairs_indices(labels, num_classes, ref_labels=None, device=None, thr
     The first 2 tensors are the indices which form all positive pairs
     The second 2 tensors are the indices which form all negative pairs
     """
-    matches, diffs = get_matches_and_diffs(labels, num_classes, ref_labels, device, threshold=threshold)
+    matches, diffs, multi_val = get_matches_and_diffs(labels, num_classes, ref_labels, device, threshold=threshold)
     a1_idx, p_idx = torch.where(matches)
     a2_idx, n_idx = torch.where(diffs)
-    return a1_idx, p_idx, a2_idx, n_idx
+    return a1_idx, p_idx, a2_idx, n_idx, multi_val
 
 def jaccard(n_classes, labels, ref_labels=None, threshold=0.3, device=torch.device("cpu")):
     if ref_labels is None:
@@ -65,11 +66,10 @@ def jaccard(n_classes, labels, ref_labels=None, threshold=0.3, device=torch.devi
     labels2_union = labels2.sum(-1)
     union = labels1_union.unsqueeze(1) + labels2_union.unsqueeze(0)
     intersection = torch.mm(labels1, labels2.T)
-    jaccard = intersection / (union - intersection)
+    jaccard_matrix = intersection / (union - intersection)
     
     # return indices of jaccard similarity above threshold
-    label_matrix = torch.where(jaccard > threshold, 1, 0).to(device)
-    return label_matrix
+    return jaccard_matrix
 
 def convert_to_triplets(indices_tuple, labels, ref_labels=None, t_per_anchor=100):
     """

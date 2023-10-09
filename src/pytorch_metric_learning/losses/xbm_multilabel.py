@@ -41,10 +41,13 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
             assert len(embeddings) <= len(self.embedding_memory)
         self.reset_stats()
         device = embeddings.device
+        labels = c_f.to_device(labels, device=device)
         self.embedding_memory = c_f.to_device(
             self.embedding_memory, device=device, dtype=embeddings.dtype
         )
-
+        self.label_memory = c_f.to_device(
+            self.label_memory, device=device, dtype=labels.dtype
+        )
         if enqueue_mask is not None:
             emb_for_queue = embeddings[enqueue_mask]
             labels_for_queue = labels[enqueue_mask]
@@ -79,14 +82,12 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
     def add_to_memory(self, embeddings, labels, batch_size):
         self.curr_batch_idx = (
             torch.arange(
-                self.queue_idx, self.queue_idx + batch_size
+                self.queue_idx, self.queue_idx + batch_size, device=labels.device
             )
             % self.memory_size
         )
         self.embedding_memory[self.curr_batch_idx] = embeddings.detach()
-        # self.label_memory[self.curr_batch_idx] = labels
-        for i in range(len(self.curr_batch_idx)):
-            self.label_memory[self.curr_batch_idx[i]] = labels[i]
+        self.label_memory[self.curr_batch_idx] = labels
         prev_queue_idx = self.queue_idx
         self.queue_idx = (self.queue_idx + batch_size) % self.memory_size
         if (not self.has_been_filled) and (self.queue_idx <= prev_queue_idx):
@@ -127,6 +128,8 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
         self.register_buffer(
             "embedding_memory", torch.zeros(self.memory_size, self.embedding_size)
         )
-        self.label_memory = [[] for i in range(self.memory_size)]
+        self.register_buffer(
+            "label_memory", torch.zeros(self.memory_size, self.num_classes)
+        )
         self.has_been_filled = False
         self.queue_idx = 0
