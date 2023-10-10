@@ -62,7 +62,6 @@ class MultiSupConLoss(GenericPairLoss):
         indices_tuple = mlmu.convert_to_pairs(
             indices_tuple, 
             labels, 
-            self.num_classes, 
             ref_labels, 
             device=embeddings.device, 
             threshold=self.threshold)

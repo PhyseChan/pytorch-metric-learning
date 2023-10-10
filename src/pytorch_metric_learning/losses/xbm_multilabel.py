@@ -105,7 +105,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
         if self.miner:
             indices_tuple = self.miner(embeddings, labels, E_mem, L_mem)
         else:
-            indices_tuple = mlmu.get_all_pairs_indices(labels, self.num_classes, L_mem)
+            indices_tuple = mlmu.get_all_pairs_indices(labels, L_mem)
         if do_remove_self_comparisons:
             indices_tuple = mlmu.remove_self_comparisons(
                 indices_tuple, self.curr_batch_idx, self.memory_size
@@ -113,7 +113,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
 
         if input_indices_tuple is not None:
             if len(input_indices_tuple) == 3 and len(indices_tuple) == 4:
-                input_indices_tuple = mlmu.convert_to_pairs(input_indices_tuple, labels, self.num_classes)
+                input_indices_tuple = mlmu.convert_to_pairs(input_indices_tuple, labels)
             elif len(input_indices_tuple) == 4 and len(indices_tuple) == 3:
                 input_indices_tuple = mlmu.convert_to_triplets(
                     input_indices_tuple, labels

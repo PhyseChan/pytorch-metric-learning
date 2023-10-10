@@ -16,7 +16,7 @@ def set_ref_emb(embeddings, labels, ref_emb, ref_labels):
     check_shapes_multilabels(ref_emb, ref_labels)
     return ref_emb, ref_labels
 
-def convert_to_pairs(indices_tuple, labels, num_classes, ref_labels=None, device=None, threshold=0.3):
+def convert_to_pairs(indices_tuple, labels, ref_labels=None, device=None, threshold=0.3):
     """
     This returns anchor-positive and anchor-negative indices,
     regardless of what the input indices_tuple is
@@ -26,15 +26,15 @@ def convert_to_pairs(indices_tuple, labels, num_classes, ref_labels=None, device
         labels: a tensor which has the label for each element in a batch
     """
     if indices_tuple is None:
-        return get_all_pairs_indices(labels, num_classes, ref_labels, device=device, threshold=threshold)
-    elif len(indices_tuple) == 4:
+        return get_all_pairs_indices(labels, ref_labels, device=device, threshold=threshold)
+    elif len(indices_tuple) == 5:
         return indices_tuple
     else:
-        a, p, n = indices_tuple
-        return a, p, a, n
+        a, p, n, jaccard_mat = indices_tuple
+        return a, p, a, n,jaccard_mat
     
-def get_matches_and_diffs(labels, num_classes, ref_labels=None, device=None, threshold=0.3):
-    jaccard_matrix = jaccard(num_classes, labels, ref_labels, device=device, threshold=threshold)
+def get_matches_and_diffs(labels, ref_labels=None, device=None, threshold=0.3):
+    jaccard_matrix = jaccard(labels, ref_labels)
     matches = torch.where(jaccard_matrix > threshold, 1, 0).to(device)
     diffs = matches ^ 1
     if ref_labels is labels:
@@ -42,18 +42,18 @@ def get_matches_and_diffs(labels, num_classes, ref_labels=None, device=None, thr
     return matches, diffs, jaccard_matrix
 
 
-def get_all_pairs_indices(labels, num_classes, ref_labels=None, device=None, threshold=0.3):
+def get_all_pairs_indices(labels, ref_labels=None, device=None, threshold=0.3):
     """
     Given a tensor of labels, this will return 4 tensors.
     The first 2 tensors are the indices which form all positive pairs
     The second 2 tensors are the indices which form all negative pairs
     """
-    matches, diffs, multi_val = get_matches_and_diffs(labels, num_classes, ref_labels, device, threshold=threshold)
+    matches, diffs, multi_val = get_matches_and_diffs(labels, ref_labels, device, threshold=threshold)
     a1_idx, p_idx = torch.where(matches)
     a2_idx, n_idx = torch.where(diffs)
     return a1_idx, p_idx, a2_idx, n_idx, multi_val
 
-def jaccard(n_classes, labels, ref_labels=None, threshold=0.3, device=torch.device("cpu")):
+def jaccard(labels, ref_labels=None):
     if ref_labels is None:
         ref_labels = labels
         
@@ -104,7 +104,7 @@ def remove_self_comparisons(
     assert len(indices_tuple) in [4, 5]
     s, e = curr_batch_idx[0], curr_batch_idx[-1]
     if len(indices_tuple) == 4:
-        a, p, n = indices_tuple
+        a, p, n, _ = indices_tuple
         keep_mask = lmu.not_self_comparisons(
             a, p, s, e, curr_batch_idx, ref_size, ref_is_subset
         )
@@ -112,9 +112,9 @@ def remove_self_comparisons(
         p = p[keep_mask]
         n = n[keep_mask]
         assert len(a) == len(p) == len(n)
-        return a, p, n
+        return a, p, n, _
     elif len(indices_tuple) == 5:
-        a1, p, a2, n = indices_tuple
+        a1, p, a2, n, _ = indices_tuple
         keep_mask = lmu.not_self_comparisons(
             a1, p, s, e, curr_batch_idx, ref_size, ref_is_subset
         )
@@ -122,5 +122,5 @@ def remove_self_comparisons(
         p = p[keep_mask]
         assert len(a1) == len(p)
         assert len(a2) == len(n)
-        return a1, p, a2, n
+        return a1, p, a2, n, _
 
