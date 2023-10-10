@@ -37,8 +37,7 @@ class TestMultiSupConLoss(unittest.TestCase):
 
     def test_multisupcon_val(self):
         loss = self.loss_func(self.embeddings, self.labels)
-        print(loss)
-        self.assertTrue(np.isclose(loss.item(), self.test_multisupcon_val_gt, atol=1e-4))
+        self.assertTrue(np.isclose(loss.item(), self.test_multisupcon_val_gt, atol=1e-6))
 
     def test_xbm_multisupcon_val(self):
         # test xbm with scatter labels
