@@ -17,9 +17,6 @@ class MultiSupConLoss(GenericPairLoss):
         self.num_classes = num_classes
         self.threshold = threshold
 
-    def dot_cosine_sim(self, a, b):
-        return a@b.T
-
     def _compute_loss(self, mat, pos_mask, neg_mask, multi_val):
         if pos_mask.bool().any() and neg_mask.bool().any():
             # if dealing with actual distances, use negative distances
