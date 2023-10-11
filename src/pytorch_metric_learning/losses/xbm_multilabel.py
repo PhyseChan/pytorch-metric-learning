@@ -1,7 +1,7 @@
 import torch
 
 from ..utils import common_functions as c_f
-# replace the functions of loss_and_miner_utils by multisupcon's
+# replace the functions of loss_and_miner_utils for multilabels
 from ..utils import multilabel_loss_and_miner_utils as mlmu
 from ..utils import loss_and_miner_utils as lmu
 from ..utils.module_with_records import ModuleWithRecords
@@ -48,6 +48,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
         self.label_memory = c_f.to_device(
             self.label_memory, device=device, dtype=labels.dtype
         )
+
         if enqueue_mask is not None:
             emb_for_queue = embeddings[enqueue_mask]
             labels_for_queue = labels[enqueue_mask]
@@ -68,6 +69,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
         else:
             E_mem = self.embedding_memory
             L_mem = self.label_memory
+
         indices_tuple = self.create_indices_tuple(
             embeddings,
             labels,
@@ -87,7 +89,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
             % self.memory_size
         )
         self.embedding_memory[self.curr_batch_idx] = embeddings.detach()
-        self.label_memory[self.curr_batch_idx] = labels
+        self.label_memory[self.curr_batch_idx] = labels.detach()
         prev_queue_idx = self.queue_idx
         self.queue_idx = (self.queue_idx + batch_size) % self.memory_size
         if (not self.has_been_filled) and (self.queue_idx <= prev_queue_idx):
@@ -106,6 +108,7 @@ class CrossBatchMemory4MultiLabel(BaseLossWrapper, ModuleWithRecords):
             indices_tuple = self.miner(embeddings, labels, E_mem, L_mem)
         else:
             indices_tuple = mlmu.get_all_pairs_indices(labels, L_mem)
+
         if do_remove_self_comparisons:
             indices_tuple = mlmu.remove_self_comparisons(
                 indices_tuple, self.curr_batch_idx, self.memory_size

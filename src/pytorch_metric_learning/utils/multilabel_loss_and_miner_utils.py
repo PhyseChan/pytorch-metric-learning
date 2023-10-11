@@ -1,6 +1,15 @@
 import torch
 from . import loss_and_miner_utils as lmu
 
+def get_matches_and_diffs(labels, ref_labels=None, threshold=0.3):
+    if ref_labels is None:
+        ref_labels = labels
+    jaccard_matrix = jaccard(labels, ref_labels)
+    matches = torch.where(jaccard_matrix > threshold, 1, 0)
+    diffs = matches ^ 1
+    if ref_labels is labels:
+        matches.fill_diagonal_(0)
+    return matches, diffs, jaccard_matrix
 def check_shapes_multilabels(embeddings, labels):
     if labels is not None and embeddings.shape[0] != len(labels):
         raise ValueError("Number of embeddings must equal number of labels")
@@ -33,13 +42,7 @@ def convert_to_pairs(indices_tuple, labels, ref_labels=None, device=None, thresh
         a, p, n, jaccard_mat = indices_tuple
         return a, p, a, n,jaccard_mat
     
-def get_matches_and_diffs(labels, ref_labels=None, device=None, threshold=0.3):
-    jaccard_matrix = jaccard(labels, ref_labels)
-    matches = torch.where(jaccard_matrix > threshold, 1, 0).to(device)
-    diffs = matches ^ 1
-    if ref_labels is labels:
-        matches.fill_diagonal_(0)
-    return matches, diffs, jaccard_matrix
+
 
 
 def get_all_pairs_indices(labels, ref_labels=None, device=None, threshold=0.3):
